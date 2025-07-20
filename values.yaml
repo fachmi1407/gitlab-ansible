@@ -1,0 +1,32 @@
+global:
+  edition: ce
+  hosts:
+    domain: local
+    externalIP: 192.168.50.21
+    https: false
+    gitlab:
+      name: gitlab.local
+      https: false
+  ingress:
+    configureCertmanager: false
+    tls:
+      enabled: false
+  gitlab:
+    webservice:
+      externalPort: 31273
+
+certmanager:
+  install: false
+
+gitlab:
+  webservice:
+    service:
+      type: NodePort
+      nodePort: 31273
+    extraEnv:
+      GITLAB_OMNIBUS_CONFIG: |
+        external_url 'http://gitlab.local:31273'
+        nginx['redirect_http_to_https'] = false
+        gitlab_rails['gitlab_https'] = false
+        gitlab_rails['gitlab_host'] = 'gitlab.local'
+        gitlab_rails['gitlab_port'] = 31273
