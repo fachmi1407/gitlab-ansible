@@ -1,0 +1,22 @@
+global:
+  edition: ce
+  hosts:
+    domain: {{ domain_name }}
+    externalIP: "{{ node_ip }}"
+  ingress:
+    configureCertmanager: false
+    tls:
+      enabled: {{ enable_tls | lower }}
+  prometheus:
+    install: false
+
+certmanager:
+  install: false
+
+nginx-ingress:
+  enabled: false
+
+gitlab:
+  webservice:
+    minReplicas: 1
+    maxReplicas: 1

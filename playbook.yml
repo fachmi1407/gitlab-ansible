@@ -1,0 +1,58 @@
+---
+- name: Install GitLab on Kubernetes via Helm
+  hosts: localhost
+  gather_facts: no
+  vars:
+    gitlab_namespace: gitlab
+    node_ip: "192.168.50.21"  # Ganti dengan IP Node kamu
+    domain_name: gitlab.local
+    enable_tls: false         # Set true jika pakai cert-manager
+
+  tasks:
+    - name: Create namespace for GitLab
+      command: kubectl create namespace {{ gitlab_namespace }}
+      ignore_errors: true
+
+    - name: Add GitLab Helm repo
+      command: helm repo add gitlab https://charts.gitlab.io/
+      register: helm_repo_add
+      changed_when: "'has been added' in helm_repo_add.stdout"
+
+    - name: Update Helm repos
+      command: helm repo update
+
+    - name: Create GitLab values.yaml from template
+      template:
+        src: templates/gitlab-values.yaml.j2
+        dest: /tmp/gitlab-values.yaml
+
+    - name: Install GitLab via Helm
+      command: >
+        helm install gitlab gitlab/gitlab
+        --namespace {{ gitlab_namespace }}
+        --timeout 900s
+        -f /tmp/gitlab-values.yaml
+      register: install_status
+      failed_when: "'Error' in install_status.stderr"
+
+    - name: Wait for GitLab webservice pod to be running
+      shell: >
+        kubectl -n {{ gitlab_namespace }} get pods -l app=webservice -o jsonpath="{.items[0].status.phase}"
+      register: pod_status
+      until: pod_status.stdout == "Running"
+      retries: 20
+      delay: 20
+
+    - name: Get GitLab root password
+      shell: |
+        kubectl -n {{ gitlab_namespace }} get secret gitlab-gitlab-initial-root-password -o jsonpath="{.data.password}" | base64 --decode
+      register: root_password
+      changed_when: false
+
+    - name: Show GitLab URL & Password
+      debug:
+        msg: |
+          🎉 GitLab telah terpasang!
+          🌐 URL: http://{{ domain_name }} (tambahkan ke /etc/hosts → {{ node_ip }} {{ domain_name }})
+          🔐 Username: root
+          🔑 Password: {{ root_password.stdout }}
